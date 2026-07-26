@@ -1,20 +1,17 @@
 [English](README.en.md) · **Español**
 
-# Mi Kinder — Sistema de gestión escolar (Colegio CAPI)
+# Mi Kinder: sistema de gestión escolar (Colegio CAPI)
 
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-base%20local-003B57?logo=sqlite&logoColor=white)
-![bcrypt](https://img.shields.io/badge/auth-bcrypt%20%2B%20sesiones-4CAF50)
-![PDF](https://img.shields.io/badge/boletas-PDF%20(fpdf2)-C2321F)
 
-Aplicación web para la **gestión escolar de un jardín de niños**: la directora y las
-maestras entran con su usuario y contraseña y administran grupos, alumnos, asistencia,
-evaluaciones y — la función estrella — la **generación de boletas de evaluación en PDF**.
+Aplicación web para la gestión escolar de un jardín de niños. La directora y las maestras
+entran con su usuario y contraseña y desde ahí administran grupos, alumnos, asistencia y
+evaluaciones. La función central es la generación de boletas de evaluación en PDF.
 
-Toda la interfaz son **páginas web** que se abren en el navegador; los datos viven en
-una base local en el equipo, así que funciona sin internet y sin depender de servicios
-externos.
+Toda la interfaz son páginas web que se abren en el navegador y los datos viven en una base
+local del equipo, así que funciona sin internet y sin depender de servicios externos.
 
 ## Capturas
 
@@ -22,7 +19,7 @@ externos.
 | --- | --- |
 | ![Login](docs/login.png) | ![Dashboard](docs/dashboard.png) |
 
-| Alumnos | Boleta de evaluación (función estrella) |
+| Alumnos | Boleta de evaluación |
 | --- | --- |
 | ![Alumnos](docs/alumnos.png) | ![Boleta](docs/boleta.png) |
 
@@ -34,51 +31,51 @@ externos.
 | --- | --- |
 | ![Reportes](docs/reportes.png) | ![Gráficas](docs/graficas.png) |
 
-| Reporte grupal (ranking) | Boleta generada en **PDF** |
+| Reporte grupal (ranking) | Boleta generada en PDF |
 | --- | --- |
 | ![Reporte grupal](docs/reporte-grupal.png) | ![Boleta PDF](docs/boleta-pdf.png) |
 
-> La última imagen es el **PDF real descargado** desde el sistema (con las firmas de
-> maestra y directora), no una maqueta.
-
-> Las capturas se tomaron con **datos ficticios de demostración**. El sistema real
-> nunca expone información de alumnos en este repositorio (la base de datos vive fuera
-> del proyecto, ver *Privacidad*).
+La última imagen es el PDF real descargado desde el sistema, con las firmas de maestra y
+directora. Las capturas se tomaron con datos ficticios de demostración; el sistema real
+nunca expone información de alumnos en este repositorio (la base de datos vive fuera del
+proyecto, ver Privacidad).
 
 ## Roles y permisos
 
 | Capacidad | Directora | Maestra |
 | --- | :---: | :---: |
-| Panel general del colegio | ✅ | ✅ (su grupo) |
-| Ver **todos** los grupos y alumnos | ✅ | Solo grupos asignados |
-| Alta/edición de alumnos | ✅ | ✅ |
-| Tomar asistencia | ✅ | ✅ |
-| Capturar evaluaciones | ✅ | ✅ |
-| Generar boletas y reportes | ✅ | ✅ |
-| **Gestión de usuarios** (crear maestras) | ✅ | ❌ |
-| **Ajustes** del colegio y ciclo escolar | ✅ | ❌ |
+| Panel general del colegio | Sí | Solo su grupo |
+| Ver todos los grupos y alumnos | Sí | Solo grupos asignados |
+| Alta/edición de alumnos | Sí | Sí |
+| Tomar asistencia | Sí | Sí |
+| Capturar evaluaciones | Sí | Sí |
+| Generar boletas y reportes | Sí | Sí |
+| Gestión de usuarios (crear maestras) | Sí | No |
+| Ajustes del colegio y ciclo escolar | Sí | No |
 
 ## Funcionalidad
 
-- **Autenticación por roles** (directora / maestra) con contraseñas cifradas con
-  **bcrypt** y sesiones de servidor; una maestra solo ve los grupos que le fueron
-  asignados.
-- **Ciclos escolares y periodos**: cada ciclo (p. ej. 2025-2026) con sus tres periodos;
+- Autenticación por roles (directora / maestra) con contraseñas cifradas con bcrypt y
+  sesiones de servidor. Una maestra solo ve los grupos que le fueron asignados.
+- Ciclos escolares y periodos: cada ciclo (por ejemplo 2025-2026) con sus tres periodos, y
   el sistema trabaja siempre sobre el ciclo y periodo activos.
-- **Grupos y alumnos**: alta con datos del alumno y del tutor, foto, grado, y traspaso
-  de alumnos entre grupos con historial.
-- **Asistencia** diaria por grupo (presente / ausente / retardo / justificada).
-- **Evaluación por áreas** (Lenguaje, Pensamiento Matemático, etc.) con una **escala de
-  logro** configurable (Logrado / En Proceso / Requiere Apoyo), por alumno y periodo.
-- **Boletas y reportes** — la función central:
-  - **Boleta individual**: encabezado del colegio, datos del alumno y matriz de áreas ×
-    periodos con el nivel de logro; se visualiza en pantalla y se **descarga en PDF**
-    (generado con **fpdf2**).
-  - **Reporte grupal**: promedios y *ranking* del grupo, también exportable a PDF.
-  - Exportación de listas de alumnos a **Excel** (openpyxl).
-- **Gráficas** de desempeño por nivel/área y de asistencia (matplotlib).
-- **Seguimiento socioemocional** y observaciones por alumno.
-- **Gestión de usuarios** (solo directora) y **ajustes** del colegio.
+- En grupos y alumnos se da de alta al alumno con sus datos y los del tutor, foto y grado, y
+  se pueden traspasar alumnos entre grupos guardando el historial.
+- Asistencia diaria por grupo (presente / ausente / retardo / justificada).
+- Evaluación por áreas (Lenguaje, Pensamiento Matemático, etc.) con una escala de logro
+  configurable (Logrado / En Proceso / Requiere Apoyo), por alumno y periodo.
+
+La parte central son las boletas y reportes:
+
+- Boleta individual con el encabezado del colegio, los datos del alumno y una matriz de
+  áreas por periodos con el nivel de logro. Se ve en pantalla y se descarga en PDF (generado
+  con fpdf2).
+- Reporte grupal con promedios y ranking del grupo, también exportable a PDF.
+- Exportación de listas de alumnos a Excel (openpyxl).
+
+También hay gráficas de desempeño por nivel/área y de asistencia (matplotlib), seguimiento
+socioemocional con observaciones por alumno, gestión de usuarios (solo directora) y ajustes
+del colegio.
 
 ## Arquitectura
 
@@ -92,9 +89,9 @@ flowchart TD
     Serv --> XLS["openpyxl → Excel"]
 ```
 
-Separación por capas: **web** (Flask + plantillas) → **servicios** (lógica de negocio:
-autenticación, reportes, generación de PDF/gráficas) → **repositorios** (consultas) →
-**base de datos** (SQLite con esquema versionado por migraciones).
+Está separado por capas: web (Flask + plantillas) llama a los servicios (autenticación,
+reportes, generación de PDF y gráficas), estos usan los repositorios (consultas) y todo cae
+en la base de datos SQLite, cuyo esquema se versiona con migraciones.
 
 ## Estructura
 
@@ -122,25 +119,22 @@ python run_web.py
 # Abre http://localhost:5000
 ```
 
-Al primer arranque el sistema crea la base de datos y una **cuenta de directora por
-defecto** para poder entrar:
+Al primer arranque el sistema crea la base de datos y una cuenta de directora por defecto
+para poder entrar:
 
 ```
 Usuario:     directora
 Contraseña:  admin123
 ```
 
-> Cambia esta contraseña desde *Usuarios* antes de un uso real.
-
-La base de datos, las fotos y los respaldos se guardan en
-`%APPDATA%/MiKinder/` (fuera de este proyecto).
+Conviene cambiar esa contraseña desde Usuarios antes de usarlo de verdad. La base de datos,
+las fotos y los respaldos se guardan en `%APPDATA%/MiKinder/`, fuera de este proyecto.
 
 ## Privacidad
 
-Este repositorio contiene **solo el código**. La base de datos con información de
-alumnos vive fuera del proyecto (`%APPDATA%/MiKinder/`) y está excluida por
-`.gitignore`; nunca se sube al repositorio. Las capturas de este README usan datos
-ficticios de demostración.
+Este repositorio contiene solo el código. La base de datos con información de alumnos vive
+fuera del proyecto (`%APPDATA%/MiKinder/`) y está excluida por `.gitignore`, así que nunca
+se sube al repositorio. Las capturas de este README usan datos ficticios de demostración.
 
 ## Stack
 
@@ -149,7 +143,8 @@ matplotlib (gráficas) · Pillow · Jinja2 · HTML/CSS/JS.
 
 ## Licencia
 
-Código bajo licencia [MIT](LICENSE). "Colegio CAPI" se usa como contexto del proyecto; las capturas emplean datos ficticios de demostración (ver *Privacidad*).
+El código se publica bajo licencia [MIT](LICENSE). "Colegio CAPI" es solo el contexto del
+proyecto y las capturas usan datos ficticios de demostración (ver Privacidad).
 
 ---
-**Ángel Josué García Cantero** · [github.com/AngelJGC](https://github.com/AngelJGC)
+Ángel Josué García Canteros · [github.com/angeljgc-dev](https://github.com/angeljgc-dev)
