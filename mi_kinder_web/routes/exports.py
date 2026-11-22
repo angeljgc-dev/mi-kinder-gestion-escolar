@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 
 from mi_kinder_web.app import get_db
 from mi_kinder_web.config import EXPORTS_DIR
+from mi_kinder_web.permissions import can_access_group, deny, group_filter_sql
 
 exports_bp = Blueprint("exports", __name__)
 
@@ -25,6 +26,9 @@ def students_excel():
 
     group_id = request.args.get("group_id", type=int)
 
+    if group_id and not can_access_group(db, current_user, group_id):
+        return deny("students.index")
+
     if group_id:
         students = db.execute(
             """SELECT s.*, g.name as group_name
@@ -35,13 +39,14 @@ def students_excel():
             (group_id,),
         ).fetchall()
     else:
+        filtro, params = group_filter_sql(db, current_user, "g.id")
         students = db.execute(
-            """SELECT s.*, g.name as group_name
+            f"""SELECT s.*, g.name as group_name
                FROM students s
                JOIN groups_ g ON g.id = s.group_id
-               WHERE g.school_year_id = ? AND s.is_active = 1
+               WHERE g.school_year_id = ? AND s.is_active = 1 {filtro}
                ORDER BY g.name, s.last_name, s.first_name""",
-            (year_id,),
+            (year_id, *params),
         ).fetchall()
 
     wb = Workbook()
@@ -114,6 +119,9 @@ def attendance_excel():
     if not group_id or not start_date or not end_date:
         flash("Selecciona grupo y fechas.", "error")
         return redirect(url_for("attendance.report"))
+
+    if not can_access_group(db, current_user, group_id):
+        return deny("attendance.report")
 
     group = db.execute("SELECT * FROM groups_ WHERE id = ?", (group_id,)).fetchone()
     import re

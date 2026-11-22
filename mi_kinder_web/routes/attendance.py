@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from datetime import date
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import can_access_group, deny, visible_groups
 
 attendance_bp = Blueprint("attendance", __name__)
 
@@ -20,10 +21,10 @@ def index():
     selected_group = request.args.get("group_id", type=int)
     selected_date = request.args.get("date", date.today().isoformat())
 
-    groups = db.execute(
-        "SELECT * FROM groups_ WHERE school_year_id = ? AND is_active = 1 ORDER BY name",
-        (year_id,),
-    ).fetchall()
+    groups = visible_groups(db, current_user, year_id)
+
+    if selected_group and not can_access_group(db, current_user, selected_group):
+        return deny("attendance.index")
 
     students = []
     attendance_map = {}
@@ -72,6 +73,9 @@ def save():
     if not group_id:
         flash("Selecciona un grupo.", "error")
         return redirect(url_for("attendance.index"))
+
+    if not can_access_group(db, current_user, group_id):
+        return deny("attendance.index")
 
     students = db.execute(
         "SELECT id FROM students WHERE group_id = ? AND is_active = 1",
@@ -122,10 +126,10 @@ def report():
     start_date = request.args.get("start_date", "")
     end_date = request.args.get("end_date", "")
 
-    groups = db.execute(
-        "SELECT * FROM groups_ WHERE school_year_id = ? AND is_active = 1 ORDER BY name",
-        (year_id,),
-    ).fetchall()
+    groups = visible_groups(db, current_user, year_id)
+
+    if group_id and not can_access_group(db, current_user, group_id):
+        return deny("attendance.report")
 
     report_data = []
     if group_id and start_date and end_date:

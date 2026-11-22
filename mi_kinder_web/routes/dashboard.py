@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from datetime import date, timedelta
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import group_filter_sql
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -21,17 +22,20 @@ def index():
 
     year_id = active_year["id"] if active_year else 0
 
+    # Maestras: everything below is limited to their assigned groups
+    filtro, fparams = group_filter_sql(db, current_user, "g.id")
+
     # Basic stats
     total_students = db.execute(
-        """SELECT COUNT(*) c FROM students s
+        f"""SELECT COUNT(*) c FROM students s
            JOIN groups_ g ON g.id = s.group_id
-           WHERE g.school_year_id = ? AND s.is_active = 1""",
-        (year_id,),
+           WHERE g.school_year_id = ? AND s.is_active = 1 {filtro}""",
+        (year_id, *fparams),
     ).fetchone()["c"]
 
     total_groups = db.execute(
-        "SELECT COUNT(*) c FROM groups_ WHERE school_year_id = ? AND is_active = 1",
-        (year_id,),
+        f"SELECT COUNT(*) c FROM groups_ g WHERE g.school_year_id = ? AND g.is_active = 1 {filtro}",
+        (year_id, *fparams),
     ).fetchone()["c"]
 
     total_teachers = db.execute(
@@ -61,14 +65,14 @@ def index():
         att_label = "Hoy"
 
     att_row = db.execute(
-        """SELECT
+        f"""SELECT
              COUNT(CASE WHEN ar.status IN ('present', 'late') THEN 1 END) * 100.0
              / NULLIF(COUNT(*), 0) as rate
            FROM attendance_records ar
            JOIN students s ON s.id = ar.student_id
            JOIN groups_ g ON g.id = s.group_id
-           WHERE g.school_year_id = ? AND ar.date BETWEEN ? AND ?""",
-        (year_id, att_start, att_end),
+           WHERE g.school_year_id = ? AND ar.date BETWEEN ? AND ? {filtro}""",
+        (year_id, att_start, att_end, *fparams),
     ).fetchone()
     attendance_rate = round(att_row["rate"], 1) if att_row and att_row["rate"] else 0
 
@@ -81,31 +85,31 @@ def index():
 
     # Groups summary
     groups = db.execute(
-        """SELECT g.id, g.name, g.grade_level,
+        f"""SELECT g.id, g.name, g.grade_level,
                   u.full_name as teacher_name,
                   COUNT(DISTINCT s.id) as student_count
            FROM groups_ g
            LEFT JOIN user_group_assignments uga ON uga.group_id = g.id
            LEFT JOIN users u ON u.id = uga.user_id
            LEFT JOIN students s ON s.group_id = g.id AND s.is_active = 1
-           WHERE g.school_year_id = ? AND g.is_active = 1
+           WHERE g.school_year_id = ? AND g.is_active = 1 {filtro}
            GROUP BY g.id ORDER BY g.name""",
-        (year_id,),
+        (year_id, *fparams),
     ).fetchall()
 
     # Recent absences (last 7 days)
     seven_days_ago = (date.today() - timedelta(days=7)).isoformat()
     absences = db.execute(
-        """SELECT s.first_name || ' ' || s.last_name as student_name,
+        f"""SELECT s.first_name || ' ' || s.last_name as student_name,
                   g.name as group_name, ar.date, ar.status
            FROM attendance_records ar
            JOIN students s ON s.id = ar.student_id
            JOIN groups_ g ON g.id = s.group_id
            WHERE ar.status IN ('absent', 'late')
              AND ar.date BETWEEN ? AND ?
-             AND g.school_year_id = ?
+             AND g.school_year_id = ? {filtro}
            ORDER BY ar.date DESC LIMIT 15""",
-        (seven_days_ago, today, year_id),
+        (seven_days_ago, today, year_id, *fparams),
     ).fetchall()
 
     # Upcoming birthdays — only next 30 days, never past birthdays
@@ -116,27 +120,27 @@ def index():
 
     if no_rollover:
         birthdays = db.execute(
-            """SELECT s.id, s.first_name, s.last_name, s.second_last_name,
+            f"""SELECT s.id, s.first_name, s.last_name, s.second_last_name,
                       s.photo_path, s.discapacidad, s.aptitud_sobresaliente,
                       s.condicion_adicional, s.birth_date, g.name as group_name
                FROM students s
                JOIN groups_ g ON g.id = s.group_id
-               WHERE g.school_year_id = ? AND s.is_active = 1
+               WHERE g.school_year_id = ? AND s.is_active = 1 {filtro}
                  AND s.birth_date IS NOT NULL
                  AND strftime('%m-%d', s.birth_date) BETWEEN ? AND ?
                ORDER BY strftime('%m-%d', s.birth_date)
                LIMIT 5""",
-            (year_id, today_mmdd, next_mmdd),
+            (year_id, *fparams, today_mmdd, next_mmdd),
         ).fetchall()
     else:
         # Year-end rollover (e.g., Dec 20 → Jan 19)
         birthdays = db.execute(
-            """SELECT s.id, s.first_name, s.last_name, s.second_last_name,
+            f"""SELECT s.id, s.first_name, s.last_name, s.second_last_name,
                       s.photo_path, s.discapacidad, s.aptitud_sobresaliente,
                       s.condicion_adicional, s.birth_date, g.name as group_name
                FROM students s
                JOIN groups_ g ON g.id = s.group_id
-               WHERE g.school_year_id = ? AND s.is_active = 1
+               WHERE g.school_year_id = ? AND s.is_active = 1 {filtro}
                  AND s.birth_date IS NOT NULL
                  AND (strftime('%m-%d', s.birth_date) >= ?
                       OR  strftime('%m-%d', s.birth_date) <= ?)
@@ -144,7 +148,7 @@ def index():
                  CASE WHEN strftime('%m-%d', s.birth_date) >= ? THEN 0 ELSE 1 END,
                  strftime('%m-%d', s.birth_date)
                LIMIT 5""",
-            (year_id, today_mmdd, next_mmdd, today_mmdd),
+            (year_id, *fparams, today_mmdd, next_mmdd, today_mmdd),
         ).fetchall()
 
     return render_template(

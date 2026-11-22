@@ -2,10 +2,13 @@
 import os
 import tempfile
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from mi_kinder_web.app import get_db
 from mi_kinder_web.config import EXPORTS_DIR
+from mi_kinder_web.permissions import (
+    can_access_group, can_access_student, deny, visible_groups,
+)
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -19,10 +22,7 @@ def index():
     ).fetchone()
     year_id = active_year["id"] if active_year else 0
 
-    groups = db.execute(
-        "SELECT * FROM groups_ WHERE school_year_id = ? AND is_active = 1 ORDER BY name",
-        (year_id,),
-    ).fetchall()
+    groups = visible_groups(db, current_user, year_id)
 
     periods = db.execute(
         "SELECT * FROM periods WHERE school_year_id = ? ORDER BY sort_order",
@@ -36,6 +36,8 @@ def index():
 @login_required
 def individual(student_id):
     db = get_db()
+    if not can_access_student(db, current_user, student_id):
+        return deny("reports.index")
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
@@ -106,6 +108,8 @@ def individual_pdf(student_id):
     from mi_kinder.services.pdf_service import PDFService
 
     db = get_db()
+    if not can_access_student(db, current_user, student_id):
+        return deny("reports.index")
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
@@ -133,6 +137,8 @@ def individual_pdf(student_id):
 @login_required
 def group(group_id):
     db = get_db()
+    if not can_access_group(db, current_user, group_id):
+        return deny("reports.index")
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
@@ -206,6 +212,8 @@ def group_pdf(group_id):
     from mi_kinder.services.pdf_service import PDFService
 
     db = get_db()
+    if not can_access_group(db, current_user, group_id):
+        return deny("reports.index")
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()

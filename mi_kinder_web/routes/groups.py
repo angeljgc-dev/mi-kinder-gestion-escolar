@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import can_access_group, deny, group_filter_sql
 
 groups_bp = Blueprint("groups", __name__)
 
@@ -15,18 +16,19 @@ def index():
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
     year_id = active_year["id"] if active_year else 0
+    filtro, params = group_filter_sql(db, current_user, "g.id")
 
     groups = db.execute(
-        """SELECT g.id, g.name, g.grade_level, g.capacity,
+        f"""SELECT g.id, g.name, g.grade_level, g.capacity,
                   u.full_name as teacher_name,
                   COUNT(DISTINCT s.id) as student_count
            FROM groups_ g
            LEFT JOIN user_group_assignments uga ON uga.group_id = g.id
            LEFT JOIN users u ON u.id = uga.user_id
            LEFT JOIN students s ON s.group_id = g.id AND s.is_active = 1
-           WHERE g.school_year_id = ? AND g.is_active = 1
+           WHERE g.school_year_id = ? AND g.is_active = 1 {filtro}
            GROUP BY g.id ORDER BY g.name""",
-        (year_id,),
+        (year_id, *params),
     ).fetchall()
 
     return render_template("groups.html", groups=groups)
@@ -36,6 +38,8 @@ def index():
 @login_required
 def detail(group_id):
     db = get_db()
+    if not can_access_group(db, current_user, group_id):
+        return deny("groups.index")
     group = db.execute(
         """SELECT g.*, u.full_name as teacher_name
            FROM groups_ g

@@ -8,18 +8,11 @@ from datetime import date
 
 from mi_kinder_web.app import get_db
 from mi_kinder_web.config import PHOTOS_DIR
+from mi_kinder_web.permissions import deny, user_group_ids as _user_group_ids
 
 students_bp = Blueprint("students", __name__)
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
-
-
-def _user_group_ids(db, user_id):
-    """Return set of group_ids assigned to this user."""
-    rows = db.execute(
-        "SELECT group_id FROM user_group_assignments WHERE user_id = ?", (user_id,)
-    ).fetchall()
-    return {r["group_id"] for r in rows}
 
 
 def _can_access_student(db, student, user):
@@ -98,7 +91,7 @@ def index():
     elif group_id:
         # If maestra tries to view a group not in their list, deny
         if allowed_gids is not None and group_id not in allowed_gids:
-            students = []
+            return deny("students.index")
         else:
             students = db.execute(
                 """SELECT s.*, g.name as group_name
@@ -380,6 +373,11 @@ def edit(student_id):
             flash("Nombre, apellido y grupo son obligatorios.", "error")
             return render_template("student_form.html", student=student, groups=groups)
 
+        # Cambiar de grupo es un traspaso: solo la directora, desde "Transferir", que deja historial.
+        if current_user.role != "directora" and group_id != student["group_id"]:
+            flash("Solo la directora puede cambiar de grupo a un alumno.", "error")
+            return render_template("student_form.html", student=student, groups=groups)
+
         # Handle student photo upload
         photo_path = student["photo_path"]
         if "photo" in request.files:
@@ -459,6 +457,10 @@ def toggle_active(student_id):
 @students_bp.route("/students/<int:student_id>/transfer", methods=["POST"])
 @login_required
 def transfer(student_id):
+    if current_user.role != "directora":
+        flash("Solo la directora puede transferir alumnos.", "error")
+        return redirect(url_for("students.index"))
+
     db = get_db()
     student = db.execute(
         "SELECT * FROM students WHERE id = ?", (student_id,)

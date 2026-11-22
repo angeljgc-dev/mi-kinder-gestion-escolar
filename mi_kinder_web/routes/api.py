@@ -1,8 +1,9 @@
 """API routes for AJAX calls."""
 from flask import Blueprint, request, jsonify
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import can_access_group, deny_json
 
 api_bp = Blueprint("api", __name__)
 
@@ -15,6 +16,9 @@ def students_list():
     group_id = request.args.get("group_id", type=int)
     if not group_id:
         return jsonify([])
+
+    if not can_access_group(db, current_user, group_id):
+        return deny_json()
 
     students = db.execute(
         """SELECT s.id, s.first_name || ' ' || s.last_name || ' ' || COALESCE(s.second_last_name, '') as name

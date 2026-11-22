@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import can_access_group, deny, visible_groups
 
 evaluations_bp = Blueprint("evaluations", __name__)
 
@@ -16,10 +17,7 @@ def index():
     ).fetchone()
     year_id = active_year["id"] if active_year else 0
 
-    groups = db.execute(
-        "SELECT * FROM groups_ WHERE school_year_id = ? AND is_active = 1 ORDER BY name",
-        (year_id,),
-    ).fetchall()
+    groups = visible_groups(db, current_user, year_id)
 
     periods = db.execute(
         "SELECT * FROM periods WHERE school_year_id = ? ORDER BY sort_order",
@@ -33,6 +31,9 @@ def index():
 
     selected_group = request.args.get("group_id", type=int)
     selected_period = request.args.get("period_id", type=int)
+
+    if selected_group and not can_access_group(db, current_user, selected_group):
+        return deny("evaluations.index")
 
     students = []
     evaluations_map = {}
@@ -105,6 +106,9 @@ def save():
     if not group_id or not period_id:
         flash("Selecciona grupo y periodo.", "error")
         return redirect(url_for("evaluations.index"))
+
+    if not can_access_group(db, current_user, group_id):
+        return deny("evaluations.index")
 
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"

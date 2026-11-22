@@ -7,9 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from flask import Blueprint, render_template, request, jsonify
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from mi_kinder_web.app import get_db
+from mi_kinder_web.permissions import (
+    can_access_group, can_access_student, deny_json, visible_groups,
+)
 
 charts_bp = Blueprint("charts", __name__)
 
@@ -32,10 +35,7 @@ def index():
     ).fetchone()
     year_id = active_year["id"] if active_year else 0
 
-    groups = db.execute(
-        "SELECT * FROM groups_ WHERE school_year_id = ? AND is_active = 1 ORDER BY name",
-        (year_id,),
-    ).fetchall()
+    groups = visible_groups(db, current_user, year_id)
 
     periods = db.execute(
         "SELECT * FROM periods WHERE school_year_id = ? ORDER BY sort_order",
@@ -55,6 +55,9 @@ def group_averages():
 
     if not group_id or not period_id:
         return jsonify({"error": "Faltan parametros"}), 400
+
+    if not can_access_group(db, current_user, group_id):
+        return deny_json()
 
     # Escala activa
     scale = db.execute(
@@ -144,6 +147,9 @@ def group_distribution():
     if not group_id or not period_id:
         return jsonify({"error": "Faltan parametros"}), 400
 
+    if not can_access_group(db, current_user, group_id):
+        return deny_json()
+
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
@@ -221,6 +227,9 @@ def student_progress():
     if not student_id:
         return jsonify({"error": "Falta student_id"}), 400
 
+    if not can_access_student(db, current_user, student_id):
+        return deny_json()
+
     active_year = db.execute(
         "SELECT * FROM school_years WHERE is_active = 1"
     ).fetchone()
@@ -295,6 +304,9 @@ def attendance_chart():
 
     if not group_id or not start_date or not end_date:
         return jsonify({"error": "Faltan parametros"}), 400
+
+    if not can_access_group(db, current_user, group_id):
+        return deny_json()
 
     data = db.execute(
         """SELECT ar.date,
