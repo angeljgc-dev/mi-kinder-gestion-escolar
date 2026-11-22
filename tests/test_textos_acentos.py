@@ -1,8 +1,8 @@
 """Criterios de aceptación: los textos visibles de la app llevan acentos.
 
 A1  La pantalla de inicio de sesión dice "Iniciar Sesión", "Contraseña", "Mantener sesión activa",
-    "Centro de Atención Psicopedagógica Infantil", "Matías Romero, Oaxaca" y
-    "Educación con valores", sin las versiones sin acento.
+    "Centro de Atención Psicopedagógica Infantil", "Matías Romero, Oaxaca",
+    "Educación con valores" y "Sistema de Gestión Escolar", sin las versiones sin acento.
 A2  El menú dice "Gráficas" y "Cerrar Sesión" (y su texto alternativo "Cerrar sesión").
 A3  Al pedir una página sin entrar, el aviso dice "Inicia sesión para continuar."
 A4  No cambia nada más: el nombre "Colegio CAPI" sigue visible.
@@ -19,10 +19,10 @@ def test_a1_login_con_acentos(entorno):
     cuerpo = texto(app.test_client().get("/login"))
     for bien in ("Iniciar Sesión", "Contraseña", "Mantener sesión activa",
                  "Centro de Atención Psicopedagógica Infantil", "Matías Romero, Oaxaca",
-                 "Educación con valores"):
+                 "Educación con valores", "Sistema de Gestión Escolar"):
         assert bien in cuerpo, bien
     for mal in ("Iniciar Sesion", "Contrasena", "sesion activa", "Atencion", "Psicopedagogica",
-                "Matias", "Educacion"):
+                "Matias", "Educacion", "Gestion"):
         assert mal not in cuerpo, mal
 
 
